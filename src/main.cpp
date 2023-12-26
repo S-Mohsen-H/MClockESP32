@@ -18,8 +18,8 @@
 #define LOCATION_URL_C "http://ip-api.com/json"
 String payload1;
 String payload2;
-String payload_dummy = "{\"abbreviation\":\"+0330\",\"client_ip\":\"217.218.49.158\",\"datetime\":\"2023-12-22T22:06:09.504615+03:30\",\"day_of_week\":5,\"day_of_year\":356,\"dst\":false,\"dst_from\":null,\"dst_offset\":0,\"dst_until\":null,\"raw_offset\":12600,\"timezone\":\"Asia/Tehran\",\"unixtime\":1703270169,\"utc_datetime\":\"2023-12-22T18:36:09.504615+00:00\",\"utc_offset\":\"+03:30\",\"week_number\":51}";
-String payload_dummy2 = "{\"abbreviation\":\"+0330\",\"client_ip\":\"217.218.49.158\",\"datetime\":\"2023-12-22T22:06:09.504615+03:30\",\"day_of_week\":5,\"day_of_year\":356,\"dst\":false,\"dst_from\":null,\"dst_offset\":0,\"dst_until\":null,\"raw_offset\":12600,\"timezone\":\"Asia/Tehran\",\"unixtime\":1703270169,\"utc_datetime\":\"2023-12-22T18:36:09.504615+00:00\",\"utc_offset\":\"+03:30\",\"week_number\":51}";
+String payload_dummy1 = "{\"abbreviation\":\"+0330\",\"client_ip\":\"217.218.49.158\",\"datetime\":\"2023-12-22T22:06:09.504615+03:30\",\"day_of_week\":5,\"day_of_year\":356,\"dst\":false,\"dst_from\":null,\"dst_offset\":0,\"dst_until\":null,\"raw_offset\":12600,\"timezone\":\"Asia/Tehran\",\"unixtime\":1703270169,\"utc_datetime\":\"2023-12-22T18:36:09.504615+00:00\",\"utc_offset\":\"+03:30\",\"week_number\":51}";
+String payload_dummy2 = "{\"status\":\"success\",\"country\":\"Iran\",\"countryCode\":\"IR\",\"region\":\"23\",\"regionName\":\"Tehran\",\"city\":\"Tehran\",\"zip\":\"\",\"lat\":35.7425,\"lon\":51.5023,\"timezone\":\"Asia/Tehran\",\"isp\":\"Iran University of Science \u0026 technology\",\"org\":\"University of Science \u0026 Technology\",\"as\":\"AS41620 Iran University Of Science and Technology\",\"query\":\"194.225.233.84\"}";
 bool updateActive = true;
 byte command;
 // uRTCLib RTC;
@@ -75,7 +75,8 @@ void httpUpdate_task(void *arg)
 
         if (httpCode = HTTP_CODE_OK)
         {
-          payload1 = http.getString().substring(76, 76 + 8);
+          // payload1 = http.getString().substring(76, 76 + 8);
+          payload1 = http.getString();
           Serial.print("ESP:");
           Serial.println(payload1.length());
           // Serial2.write(payload_dummy.c_str(), payload_dummy.length());
@@ -89,7 +90,8 @@ void httpUpdate_task(void *arg)
 
         if (httpCode = HTTP_CODE_OK)
         {
-          payload2 = http.getString().substring(100, 100 + 20);
+          // payload2 = http.getString().substring(100, 100 + 20);
+          payload2 = http.getString();
           Serial.print("ESP:");
           Serial.println(payload2.length());
           // Serial2.write(payload_dummy.c_str(), payload_dummy.length());
@@ -107,7 +109,7 @@ void I2C_receiveCallback(int num)
   while (Wire.available()) // loop through all but the last
   {
     char c = Wire.read(); // receive byte as a character
-    Serial.printf("ESP: got %x", c);
+    Serial.printf("ESP: got %x\n", c);
     // Serial.println(c);
     switch (c)
     {
@@ -135,18 +137,39 @@ void I2C_requestCallback()
 {
   // if (payload.length() > 2)
   // {
-  if (command == 0xA1)
+  byte high;
+  byte low;
+  byte Byte1;
+  switch (command)
+  {
+  case 0xA1:
+    // high = payload_dummy1.length() >> 8;
+    // low = payload_dummy1.length();
+    high = (payload1.length() & 0xF0) >> 8;
+    low = payload1.length() & 0xF;
+    Wire.slaveWrite(&high, 1);
+    Wire.slaveWrite(&low, 1);
     Wire.slaveWrite((uint8_t *)payload1.c_str(), payload1.length());
-  else if (command == 0xA2)
+    // Wire.slaveWrite((uint8_t *)payload_dummy1.c_str(), payload_dummy1.length());
+    break;
+  case 0xA2:
+
+    // high = payload_dummy2.length() >> 8;
+    // low = payload_dummy2.length();
+    high = (payload2.length() & 0xF0) >> 8;
+    low = payload2.length() & 0xF;
+    Wire.slaveWrite(&high, 1);
+    Wire.slaveWrite(&low, 1);
     Wire.slaveWrite((uint8_t *)payload2.c_str(), payload2.length());
-
-  // String str = payload_dummy.substring()
-  // Wire.slaveWrite((uint8_t *)(payload_dummy.substring(76,76+16).c_str()), payload_dummy.length());
-
-  // payload = "";
-  // }
-  // else
-  //   Wire.slaveWrite((uint8_t *)"no data\n\0", 10);
+    // Wire.slaveWrite((uint8_t *)payload_dummy2.c_str(), payload_dummy2.length());
+    break;
+  case 0xA0:
+    Byte1 = WiFi.status();
+    Wire.slaveWrite(&Byte1, 1);
+    break;
+  default:
+    break;
+  }
 }
 u32_t now;
 void setup()
